@@ -16,11 +16,11 @@ app.listen(`${PORT}`, async () => {
     console.log(`Running on http://localhost:${PORT}`);
     console.log("Running track loop every 15 minutes");
     console.log("==============================================");
-    // while (true) {
-    //     let trackedUsers = getTrackList();
-    //     updateTrackedPlayers(trackedUsers);
-    //     await delay(1000 * 60 * 15);
-    // }
+    while (true) {
+        let trackedUsers = getTrackList();
+        updateTrackedPlayers(trackedUsers);
+        await delay(1000 * 60 * 15);
+    }
 });
 
 app.get('/', (req, res) => {
@@ -69,7 +69,11 @@ async function updateTrackedPlayers(playerList) {
 
         // all history
         let res = await fetch(`https://api.henrikdev.xyz/valorant/v3/matches/${region}/${username}/${tag}`)
-            .catch(err => consoleWrite('ERROR', err));
+        if (res.status != 200) {
+            consoleWrite('ERROR', res.statusText);
+            return;
+        }
+
         let data = await res.json();
 
 
@@ -96,7 +100,10 @@ async function updateTrackedPlayers(playerList) {
 
         // ranked history
         res = await fetch(`https://api.henrikdev.xyz/valorant/v1/mmr-history/${region}/${username}/${tag}`)
-            .catch(err => consoleWrite('ERROR', err));
+        if (res.status != 200) {
+            consoleWrite('ERROR', res.statusText);
+            return;
+        }
         data = await res.json();
 
         for (const match of data.data) {
@@ -112,6 +119,10 @@ async function updateTrackedPlayers(playerList) {
             } else {
                 // look up the matchid to fill in the missing information
                 let tempRes = await fetch(`https://api.henrikdev.xyz/valorant/v2/match/${match.match_id}`);
+                if (res.status != 200) {
+                    consoleWrite('ERROR', res.statusText);
+                    return;
+                }
                 let tempData = await tempRes.json();
 
                 const matchid = tempData.data.metadata.matchid;
