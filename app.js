@@ -1,26 +1,59 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const app = express();
 const fs = require('fs');
 
+
 const PORT = 3000;
+
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: true }))
+
 
 
 app.listen(`${PORT}`, async () => {
-    console.log(`Listening on http://localhost:${PORT}`);
     console.log("==============================================");
-    console.log(`Running on localhost:${PORT}`);
+    console.log(`Running on http://localhost:${PORT}`);
     console.log("Running track loop every 15 minutes");
     console.log("==============================================");
-    while (true) {
-        let trackedUsers = getTrackList();
-        updateTrackedPlayers(trackedUsers);
-        await delay(1000 * 60 * 15);
-    }
+    // while (true) {
+    //     let trackedUsers = getTrackList();
+    //     updateTrackedPlayers(trackedUsers);
+    //     await delay(1000 * 60 * 15);
+    // }
 });
 
 app.get('/', (req, res) => {
     res.send('yeah');
 });
+
+app.post('/trackPlayer', (req, res) => {
+    consoleWrite('UPDATE', "Received request to track player");
+    // add a player to the track list
+
+    let { username, tag, region } = req.body;
+    if (!username || !tag || !region) {
+        consoleWrite('ERROR', "Missing username, tag, or region");
+        res.status(400).send("Missing username, tag, or region");
+        return;
+    }
+    username = username.toLowerCase();
+    tag = tag.toLowerCase();
+    let trackList = getTrackList();
+    // check if the player is already being tracked
+    for (const player of trackList) {
+        if (JSON.stringify(player) === JSON.stringify({username, tag, region})) {
+            consoleWrite('ERROR', "Player is already being tracked");
+            res.status(400).send("Player is already being tracked");
+            return;
+        }
+    }
+
+    trackList.push({username, tag, region});
+    fs.writeFile("data/track_list.json", JSON.stringify(trackList), (err) => {if (err) consoleWrite('ERROR', err)});
+    consoleWrite('UPDATE', `Added ${username}#${tag} to track list`);
+    res.status(200).send("Added player to track list");
+})
 
 async function updateTrackedPlayers(playerList) {
     createFolder("data/players");
@@ -35,8 +68,10 @@ async function updateTrackedPlayers(playerList) {
         let historyRanked = {};
 
         // all history
-        let res = await fetch(`https://api.henrikdev.xyz/valorant/v3/matches/${region}/${username}/${tag}`);
+        let res = await fetch(`https://api.henrikdev.xyz/valorant/v3/matches/${region}/${username}/${tag}`)
+            .catch(err => consoleWrite('ERROR', err));
         let data = await res.json();
+
 
         for (const match of data.data) {
             const date = parseInt(match.metadata.game_start);
@@ -60,7 +95,8 @@ async function updateTrackedPlayers(playerList) {
         }
 
         // ranked history
-        res = await fetch(`https://api.henrikdev.xyz/valorant/v1/mmr-history/${region}/${username}/${tag}`);
+        res = await fetch(`https://api.henrikdev.xyz/valorant/v1/mmr-history/${region}/${username}/${tag}`)
+            .catch(err => consoleWrite('ERROR', err));
         data = await res.json();
 
         for (const match of data.data) {
@@ -165,5 +201,17 @@ const delay = (delayInms) => {
 }
 
 function consoleWrite(code, message) {
-    console.log(`[${code}] ${message}`)
+    let color;
+    switch (code) {
+        case 'UPDATE':
+            color = '\x1b[32m';
+            break;
+        case 'ERROR':
+            color = '\x1b[31m';
+            break;
+        default:
+            color = '\x1b[37m';
+            break;
+    }
+    console.log(`${color}${new Date().toLocaleString('en-US', {timeZone: "EST"})} | [${code}] ${message}`)
 }
