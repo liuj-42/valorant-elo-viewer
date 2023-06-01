@@ -63,7 +63,13 @@ async function updatePlayerCSV(player, data) {
 
         if (lastTime != "timeraw") {
             while (lastRecorded != lastTime) {
-                lastRecorded = data.data[i--].date_raw;
+                try {
+                    lastRecorded = data.data[i--].date_raw;
+                } catch (e) {
+                    i = -1;
+                    consoleWrite("ERROR", `Date parse error on ${player[0]}#${player[1]}}`);
+                    break;
+                }
                 if (i == -1) {
                     break;
                 }
