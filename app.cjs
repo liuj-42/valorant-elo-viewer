@@ -82,17 +82,21 @@ async function updatePlayerCSV(player, data) {
 
         for (i; i >= 0; i--) {
             let line = data.data[i];
-            fs.writeFile(filename, `\n${line.date_raw},"${line.date}",${line.mmr_change_to_last_game},${line.elo},"${line.currenttierpatched}"`, { 'flag': 'a' }, function (err) {
-                if (err) {
-                    return console.error(err);
-                    consoleWrite('ERROR', `Unable to append to ${player[0]}#${player[1]}.csv`);
-                }
-            });
-            fs.writeFile("./user_data/master.csv", `\n${line.date_raw},"${line.date}","${player[0]}#${player[1]}",${line.mmr_change_to_last_game},${line.elo},"${line.currenttierpatched}"`, { 'flag': 'a' }, function (err) {
-                if (err) {
-                    consoleWrite('ERROR', 'Unable to append to master.csv');
-                }
-            });
+            axios.get(`https://api.henrikdev.xyz/valorant/v2/match/${line.match_id}`).then(res => { 
+                let game_length = res.data.data.metadata.game_length;
+                fs.writeFile(filename, `\n${line.date_raw},"${line.date}",${line.mmr_change_to_last_game},${line.elo},"${line.currenttierpatched}","${line.match_id}",${game_length}`, { 'flag': 'a' }, function (err) {
+                    if (err) {
+                        return console.error(err);
+                        consoleWrite('ERROR', `Unable to append to ${player[0]}#${player[1]}.csv`);
+                    }
+                });
+                fs.writeFile("./user_data/master.csv", `\n${line.date_raw},"${line.date}","${player[0]}#${player[1]}",${line.mmr_change_to_last_game},${line.elo},"${line.currenttierpatched}","${line.match_id}",${game_length}`, { 'flag': 'a' }, function (err) {
+                    if (err) {
+                        consoleWrite('ERROR', 'Unable to append to master.csv');
+                    }
+                });
+            }).catch(err => { consoleWrite('ERROR', `Unable to call match ${line.match_id} at this time`) });
+
         }
 
     });
@@ -101,7 +105,7 @@ async function updatePlayerCSV(player, data) {
 function createFile(filename) {
     fs.open(filename, 'r', function (err, fd) {
         if (err) {
-            fs.writeFile(filename, 'timeraw,date,change,elo,rank', function (err) {
+            fs.writeFile(filename, 'timeraw,date,change,elo,rank,matchid,length', function (err) {
                 if (err) {
                     console.error(err);
                 }
